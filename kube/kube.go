@@ -49,11 +49,12 @@ func CreateDeploy(id string) {
 	    Image: d.Image,
 	    Namespace: d.Namespace,
 	}
+	log.Printf("Instance : %#v \n", Instance)
 	namespace := Instance.CreateNamespace(ctx, cs)
 	log.Printf("Creating namespace %#v \n", namespace)
  	
     deployment := Instance.CreateDeployment(ctx, cs, namespace)
-	s := waitForReadyReplicas(ctx, cs, deployment)
+	s := Instance.WaitForReadyReplicas(ctx, cs, deployment)
     log.Printf("Replicas ready %#v \n", s)
 	var deploy Deploy
 	//Once the replica is ready mark the deployment status in mysql to true
@@ -82,54 +83,3 @@ func CreateDeploy(id string) {
 
 	return res, nil
  }
-
-func waitForReadyReplicas(ctx context.Context, clientSet *kubernetes.Clientset, deployment *appv1.Deployment) *Replica {
-
-	log.Printf("Waiting for ready replicas in deployment %q\n", deployment.Name)
-	for {
-		expectedReplicas := *deployment.Spec.Replicas
-		readyReplicas := getReadyReplicasForDeployment(ctx, clientSet, deployment)
-		if readyReplicas == expectedReplicas {
-			log.Printf("replicas are ready!\n\n")
-			return &Replica{
-				Name: deployment.Name,
-				Status: true,
-			}
-			break
-		}
-
-		log.Printf("replicas are not ready yet. %d/%d\n", readyReplicas, expectedReplicas)
-		time.Sleep(1 * time.Second)
-	}
-
-	return &Replica{
-		Name: "",
-		Status: false,
-	}
-}
-
-func createNamespace(ctx context.Context, clientSet *kubernetes.Clientset, name string) *corev1.Namespace {
-
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-	ns, err := clientSet.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-	panicIfError(err)
-	return ns
-}
-
-func getReadyReplicasForDeployment(ctx context.Context, clientSet *kubernetes.Clientset, deployment *appv1.Deployment) int32 {
-	dep, err := clientSet.AppsV1().Deployments(deployment.Namespace).Get(ctx, deployment.Name, metav1.GetOptions{})
-	panicIfError(err)
-
-	return dep.Status.ReadyReplicas
-}
-
-
-func panicIfError(err error) {
-	if err != nil {
-		panic(err.Error())
-	}
-}
