@@ -4,14 +4,11 @@ import (
 	"log"
 	"time"
 	"github.com/techswarn/playworker/database"
-	"github.com/techswarn/playworker/utils"
-
+    k "github.com/techswarn/k8slib"
 	"k8s.io/client-go/kubernetes"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"github.com/Azure/go-autorest/autorest/to"
-
 	"errors"
 	"context"
 
@@ -19,7 +16,7 @@ import (
 
 var cs *kubernetes.Clientset
 func init() {
-    cs, _ = utils.GetKubehandle()
+    cs = k.Connect()
 }
 //Struct for deploymnent details
 type Deploy struct {
@@ -47,13 +44,23 @@ func CreateDeploy(id string) {
 	//Create the deploy from the details fetched.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	namespace := createNamespace(ctx, cs, d.Namespace)
+	Instance := &k.Instance {
+		Name: d.Name,
+	    Image: d.Image,
+	    Namespace: d.Namespace,
+	}
+	namespace := Instance.CreateNamespace(ctx, cs)
 	log.Printf("Creating namespace %#v \n", namespace)
  	
-    deployment := createDeployment(ctx, cs, namespace, d.Name, d.Image)
+    deployment := Instance.CreateDeployment(ctx, cs, namespace)
 	s := waitForReadyReplicas(ctx, cs, deployment)
     log.Printf("Replicas ready %#v \n", s)
-
+	var deploy Deploy
+	//Once the replica is ready mark the deployment status in mysql to true
+	updateDeployStatus := database.DB.Model(deploy).Where("id = ?", id).Update("status", true)
+	if updateDeployStatus.RowsAffected == 0 {
+		errors.New("Deployment not found in table")
+	}
 }
 
  func GetDeployDetails(id string) (Deploy , error) {
@@ -75,50 +82,6 @@ func CreateDeploy(id string) {
 
 	return res, nil
  }
-
-//CREATE DEPLOYMENT
-func createDeployment(ctx context.Context, clientSet *kubernetes.Clientset, ns *corev1.Namespace, name string, image string) *appv1.Deployment {
-	log.Printf("Printing namespace================= %#s \n", ns.Name)
-	var (
-		matchLabel = map[string]string{"app": "nginx"}
-		objMeta    = metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns.Name,
-			Labels:    matchLabel,
-		}
-	)
-
-	deployment := &appv1.Deployment{
-		ObjectMeta: objMeta,
-		Spec: appv1.DeploymentSpec{
-			Replicas: to.Int32Ptr(1),
-			Selector: &metav1.LabelSelector{MatchLabels: matchLabel},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: matchLabel,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  name,
-							Image: image,
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: 80,
-								},						
-							},
-							Command: []string{"/bin/sh", "-c", "sleep 50000"},
-						},
-					},
-				},
-			},
-		},
-	}
-	deployment, err := clientSet.AppsV1().Deployments(ns.Name).Create(ctx, deployment, metav1.CreateOptions{})
-	//log.Printf(" deployment: %#v", deployment)
-	panicIfError(err)
-	return deployment
-}
 
 func waitForReadyReplicas(ctx context.Context, clientSet *kubernetes.Clientset, deployment *appv1.Deployment) *Replica {
 
