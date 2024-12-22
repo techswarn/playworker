@@ -68,6 +68,7 @@ func CreateDeploy(id string) {
 	 var deploy Deploy
 	 result := database.DB.First(&deploy, "id = ?", id)
 	 // if the item data is not found, return an error
+	 log.Printf("result.RowsAffected %d", result.RowsAffected)
 	if result.RowsAffected == 0 {
 		return Deploy{}, errors.New("Deployment not found in table")
 	}
@@ -80,6 +81,6 @@ func CreateDeploy(id string) {
 		Status: deploy.Status,
 		CreatedAt: deploy.CreatedAt,
 	}
-
+	log.Println("888888888888")
 	return res, nil
  }
