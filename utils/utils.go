@@ -43,8 +43,8 @@ func GetKubehandle() (*kubernetes.Clientset, *metrics.Clientset) {
 	// use the current context in kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		//panic(err.Error())
 		log.Println("Kube config not found")
+		panic(err.Error())
 	}
 
 	// create the clientset

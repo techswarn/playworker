@@ -16,7 +16,7 @@ import (
 
 var cs *kubernetes.Clientset
 func init() {
-    cs = k.Connect()
+   // cs = k.Connect()
 }
 //Struct for deploymnent details
 type Deploy struct {
