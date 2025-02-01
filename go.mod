@@ -5,7 +5,7 @@ go 1.23.4
 require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/joho/godotenv v1.5.1
-	github.com/techswarn/k8slib v0.0.0-20241221094802-419870c6f3ba
+	github.com/techswarn/k8slib v0.0.0-20241222184113-6ac66a269964
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.12
 	k8s.io/client-go v0.32.0
