@@ -1,4 +1,4 @@
-FROM golang:1.13-alpine as builder
+FROM golang:1.23-alpine as builder
 
 #DECLARE ENVIRONMENT VARIABLES HERE
 ARG GO_ENV
